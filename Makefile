@@ -27,6 +27,7 @@ build-rocky: fetch-source
 	@dnf install -y --enablerepo=devel --enablerepo=crb \
 		@Development\ Tools \
 		bzip2-devel \
+		dbus-devel \
 		http-parser-devel \
 		hwloc-devel \
 		json-c-devel \
