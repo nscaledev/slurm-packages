@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
-SLURM_VERSION ?= 24.05.4
-SLURM_MD5SUM ?= 3c96457c564990db9a6ee5d81b225587
+SLURM_VERSION ?= 25.11.0
+SLURM_MD5SUM ?= b80465f2dd9f763f26fd8f7906b52aa9
 SLURM_TARBALL ?= slurm-$(SLURM_VERSION).tar.bz2
 SLURM_SOURCE ?= https://download.schedmd.com/slurm/$(SLURM_TARBALL)
 
@@ -62,7 +62,7 @@ build-ubuntu: fetch-source
 	@ln -sf /usr/share/zoneinfo/Europe/London /etc/localtime
 	@DEBIAN_FRONTEND=noninteractive apt -y install tzdata
 	@dpkg-reconfigure --frontend noninteractive tzdata
-	@apt -y install build-essential curl devscripts fakeroot equivs lsb-release
+	@apt -y install build-essential curl devscripts fakeroot equivs lsb-release libpmix-dev
 	@curl -L https://repo.radeon.com/amdgpu-install/6.2.4/ubuntu/$$(lsb_release -sc 2>/dev/null)/amdgpu-install_6.2.60204-1_all.deb -o /tmp/amdgpu-install.deb
 	@apt -y install /tmp/amdgpu-install.deb
 	@apt -y update
