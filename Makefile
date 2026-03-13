@@ -8,8 +8,7 @@ SLURM_SOURCE ?= https://download.schedmd.com/slurm/$(SLURM_TARBALL)
 BUILD_DIR ?= /build
 
 .PHONY: default
-default:
-	@echo "No target specified"
+default: build-ubuntu
 
 .PHONY: fetch-source
 fetch-source: $(SLURM_TARBALL)
@@ -20,41 +19,6 @@ $(SLURM_TARBALL):
 		echo "$(SLURM_TARBALL) md5sum does not match expected value: $(SLURM_MD5SUM)"; \
 	exit 1; \
 	fi
-
-.PHONY: build-rocky
-build-rocky: fetch-source
-	@dnf install -y https://repo.radeon.com/amdgpu-install/6.2.4/rhel/9.3/amdgpu-install-6.2.60204-1.el9.noarch.rpm
-	@dnf install -y --enablerepo=devel --enablerepo=crb \
-		@Development\ Tools \
-		bzip2-devel \
-		dbus-devel \
-		http-parser-devel \
-		hwloc-devel \
-		json-c-devel \
-		libyaml-devel \
-		lua-devel \
-		mariadb-devel \
-		munge-devel \
-		munge-libs \
-		numactl-devel \
-		openssl-devel \
-		pam-devel \
-		perl-ExtUtils-MakeMaker \
-		pmix-devel \
-		procps \
-		readline-devel \
-		rocm-smi-lib \
-		rpm-build \
-		systemd \
-		systemd-rpm-macros
-	@rpmbuild -ta $(BUILD_DIR)/$(SLURM_TARBALL) \
-		--with mysql \
-		--with hwloc \
-		--with numa \
-		--with pmix \
-		--with slurmrestd \
-		--with lua \
-		--with yaml
 
 .PHONY: build-ubuntu
 build-ubuntu: fetch-source
