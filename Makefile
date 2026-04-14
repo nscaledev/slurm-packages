@@ -33,11 +33,12 @@ build-ubuntu: fetch-source
 	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
 	@pushd $(BUILD_DIR)/slurm-$(SLURM_VERSION) && \
 		mk-build-deps -ir --tool='apt-get -qq -y -o Debug::pkgProblemResolver=yes --no-install-recommends' debian/control && \
-		debuild -b -uc -us
+		DEB_BUILD_OPTIONS="parallel=$$(nproc)" debuild -b -uc -us
 
 .PHONY: build-rocky
 build-rocky: fetch-source
 	@rpmbuild -ta $(BUILD_DIR)/$(SLURM_TARBALL) \
+		--define "_smp_mflags -j$$(nproc)" \
 		--with mysql \
 		--with hwloc \
 		--with numa \
@@ -86,17 +87,17 @@ endef
 .PHONY: docker-build-ubuntu-amd64
 docker-build-ubuntu-amd64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu2404-amd64.tar.gz)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu2404-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION).tar.gz)
 
 .PHONY: docker-build-ubuntu-arm64
 docker-build-ubuntu-arm64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu2404-arm64.tar.gz)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu2404-arm64-cuda$(CUDA_VERSION).tar.gz)
 
 .PHONY: docker-build-rocky-amd64
 docker-build-rocky-amd64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky9-amd64.tar.gz)
+	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky9-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION).tar.gz)
 
 .PHONY: docker-build-all
 docker-build-all: docker-build-ubuntu-amd64 docker-build-ubuntu-arm64 docker-build-rocky-amd64

@@ -45,6 +45,11 @@ RUN dnf install -y --enablerepo=devel --enablerepo=crb \
       systemd \
       systemd-rpm-macros
 
+# Symlink NVML headers/libs to standard paths so Slurm configure can find them
+RUN CUDA_MAJ_MIN=$(echo "${CUDA_VERSION}" | tr '-' '.') && \
+    ln -s /usr/local/cuda-${CUDA_MAJ_MIN}/targets/x86_64-linux/include/nvml.h /usr/include/nvml.h && \
+    ln -s /usr/local/cuda-${CUDA_MAJ_MIN}/targets/x86_64-linux/lib/stubs/libnvidia-ml.so /usr/lib64/libnvidia-ml.so
+
 WORKDIR /workspace
 COPY Makefile .
 
