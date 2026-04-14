@@ -22,53 +22,13 @@ $(SLURM_TARBALL):
 
 .PHONY: build-ubuntu
 build-ubuntu: fetch-source
-	@sudo apt -y update
-	@sudo apt -y upgrade
-	@sudo ln -sf /usr/share/zoneinfo/Europe/London /etc/localtime
-	@sudo DEBIAN_FRONTEND=noninteractive apt -y install tzdata
-	@sudo dpkg-reconfigure --frontend noninteractive tzdata
-	@sudo apt -y install bc build-essential curl devscripts fakeroot equivs lsb-release pkg-config
-	@if [ "$$(dpkg --print-architecture)" = "amd64" ]; then \
-		sudo apt -y install librocm-smi-dev libnvidia-ml-dev; \
-	fi
 	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
 	@pushd $(BUILD_DIR)/slurm-$(SLURM_VERSION) && \
-		sudo mk-build-deps -ir --tool='apt-get -qq -y -o Debug::pkgProblemResolver=yes --no-install-recommends' debian/control && \
+		mk-build-deps -ir --tool='apt-get -qq -y -o Debug::pkgProblemResolver=yes --no-install-recommends' debian/control && \
 		debuild -b -uc -us
 
 .PHONY: build-rocky
 build-rocky: fetch-source
-	@dnf install -y epel-release
-	@dnf install -y https://repo.radeon.com/amdgpu-install/6.2.4/rhel/9.3/amdgpu-install-6.2.60204-1.el9.noarch.rpm
-	@dnf install -y --enablerepo=devel --enablerepo=crb \
-		@Development\ Tools \
-		bzip2-devel \
-		dbus-devel \
-		freeipmi-devel \
-		hdf5-devel \
-		http-parser-devel \
-		hwloc-devel \
-		json-c-devel \
-		libcurl-devel \
-		libjwt-devel \
-		librdkafka-devel \
-		libyaml-devel \
-		lua-devel \
-		mariadb-devel \
-		munge-devel \
-		munge-libs \
-		numactl-devel \
-		openssl-devel \
-		pam-devel \
-		perl-ExtUtils-MakeMaker \
-		pmix-devel \
-		procps \
-		readline-devel \
-		rocm-smi-lib \
-		rpm-build \
-		rrdtool-devel \
-		systemd \
-		systemd-rpm-macros
 	@rpmbuild -ta $(BUILD_DIR)/$(SLURM_TARBALL) \
 		--with mysql \
 		--with hwloc \
