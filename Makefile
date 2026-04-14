@@ -57,18 +57,24 @@ build-rocky: fetch-source
 DOCKER_BUILDX_BUILDER ?= slurm-builder
 OUTPUT_DIR ?= ./output
 
+# In CI (e.g. GitHub Actions), buildx and QEMU are set up by dedicated actions.
+# Set CI=1 to skip docker-setup and use the default builder.
+CI ?= 0
+
 .PHONY: docker-setup
 docker-setup:
+ifneq ($(CI),1)
 	@docker buildx inspect $(DOCKER_BUILDX_BUILDER) >/dev/null 2>&1 || \
 		docker buildx create --name $(DOCKER_BUILDX_BUILDER) --driver docker-container --bootstrap
 	@docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
+endif
 
 # Helper to run a docker buildx build and package the output as a tarball
 # $(1) = Dockerfile, $(2) = platform, $(3) = tarball name
 define docker-build
 	$(eval TMPDIR := $(shell mktemp -d))
 	docker buildx build \
-		--builder $(DOCKER_BUILDX_BUILDER) \
+		$(if $(filter 1,$(CI)),,--builder $(DOCKER_BUILDX_BUILDER)) \
 		--platform $(2) \
 		--file $(1) \
 		--build-arg SLURM_VERSION=$(SLURM_VERSION) \
