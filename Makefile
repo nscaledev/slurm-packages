@@ -38,14 +38,20 @@ build-ubuntu: fetch-source
 
 .PHONY: build-rocky
 build-rocky: fetch-source
+	@dnf install -y epel-release
 	@dnf install -y https://repo.radeon.com/amdgpu-install/6.2.4/rhel/9.3/amdgpu-install-6.2.60204-1.el9.noarch.rpm
 	@dnf install -y --enablerepo=devel --enablerepo=crb \
 		@Development\ Tools \
 		bzip2-devel \
 		dbus-devel \
+		freeipmi-devel \
+		hdf5-devel \
 		http-parser-devel \
 		hwloc-devel \
 		json-c-devel \
+		libcurl-devel \
+		libjwt-devel \
+		librdkafka-devel \
 		libyaml-devel \
 		lua-devel \
 		mariadb-devel \
@@ -60,6 +66,7 @@ build-rocky: fetch-source
 		readline-devel \
 		rocm-smi-lib \
 		rpm-build \
+		rrdtool-devel \
 		systemd \
 		systemd-rpm-macros
 	@rpmbuild -ta $(BUILD_DIR)/$(SLURM_TARBALL) \
@@ -69,7 +76,12 @@ build-rocky: fetch-source
 		--with pmix \
 		--with slurmrestd \
 		--with lua \
-		--with yaml
+		--with yaml \
+		--with jwt \
+		--with hdf5 \
+		--with freeipmi \
+		--with rdkafka \
+		--with rrdtool
 
 # === Docker build targets ===
 
