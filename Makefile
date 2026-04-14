@@ -7,6 +7,10 @@ SLURM_SOURCE ?= https://download.schedmd.com/slurm/$(SLURM_TARBALL)
 
 BUILD_DIR ?= /build
 
+# GPU library versions
+CUDA_VERSION ?= 13-2
+ROCM_VERSION ?= 6.2.4
+
 .PHONY: default
 default: build-ubuntu
 
@@ -54,47 +58,68 @@ docker-setup:
 		docker buildx create --name $(DOCKER_BUILDX_BUILDER) --driver docker-container --bootstrap
 	@docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
 
-.PHONY: docker-build-ubuntu-amd64
-docker-build-ubuntu-amd64: docker-setup
-	@mkdir -p $(OUTPUT_DIR)/ubuntu2404-amd64
+# Helper to run a docker buildx build and package the output as a tarball
+# $(1) = Dockerfile, $(2) = platform, $(3) = gpu type, $(4) = tarball name
+define docker-build
+	$(eval TMPDIR := $(shell mktemp -d))
 	docker buildx build \
 		--builder $(DOCKER_BUILDX_BUILDER) \
-		--platform linux/amd64 \
-		--file docker/ubuntu2404.Dockerfile \
+		--platform $(2) \
+		--file $(1) \
 		--build-arg SLURM_VERSION=$(SLURM_VERSION) \
 		--build-arg SLURM_MD5SUM=$(SLURM_MD5SUM) \
+		--build-arg GPU=$(3) \
+		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg ROCM_VERSION=$(ROCM_VERSION) \
 		--target export \
-		--output type=local,dest=$(OUTPUT_DIR)/ubuntu2404-amd64 \
+		--output type=local,dest=$(TMPDIR) \
 		.
+	@tar -czf $(OUTPUT_DIR)/$(4) -C $(TMPDIR) .
+	@rm -rf $(TMPDIR)
+endef
 
-.PHONY: docker-build-ubuntu-arm64
-docker-build-ubuntu-arm64: docker-setup
-	@mkdir -p $(OUTPUT_DIR)/ubuntu2404-arm64
-	docker buildx build \
-		--builder $(DOCKER_BUILDX_BUILDER) \
-		--platform linux/arm64 \
-		--file docker/ubuntu2404.Dockerfile \
-		--build-arg SLURM_VERSION=$(SLURM_VERSION) \
-		--build-arg SLURM_MD5SUM=$(SLURM_MD5SUM) \
-		--target export \
-		--output type=local,dest=$(OUTPUT_DIR)/ubuntu2404-arm64 \
-		.
+# Ubuntu 24.04 amd64
+.PHONY: docker-build-ubuntu-amd64-nvml
+docker-build-ubuntu-amd64-nvml: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,nvml,slurm-$(SLURM_VERSION)-ubuntu2404-amd64-nvml$(CUDA_VERSION).tar.gz)
 
-.PHONY: docker-build-rocky-amd64
-docker-build-rocky-amd64: docker-setup
-	@mkdir -p $(OUTPUT_DIR)/rocky9-amd64
-	docker buildx build \
-		--builder $(DOCKER_BUILDX_BUILDER) \
-		--platform linux/amd64 \
-		--file docker/rocky9.Dockerfile \
-		--build-arg SLURM_VERSION=$(SLURM_VERSION) \
-		--build-arg SLURM_MD5SUM=$(SLURM_MD5SUM) \
-		--target export \
-		--output type=local,dest=$(OUTPUT_DIR)/rocky9-amd64 \
-		.
+.PHONY: docker-build-ubuntu-amd64-rsmi
+docker-build-ubuntu-amd64-rsmi: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,rsmi,slurm-$(SLURM_VERSION)-ubuntu2404-amd64-rsmi$(ROCM_VERSION).tar.gz)
+
+# Ubuntu 24.04 arm64
+.PHONY: docker-build-ubuntu-arm64-nvml
+docker-build-ubuntu-arm64-nvml: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,nvml,slurm-$(SLURM_VERSION)-ubuntu2404-arm64-nvml$(CUDA_VERSION).tar.gz)
+
+.PHONY: docker-build-ubuntu-arm64-rsmi
+docker-build-ubuntu-arm64-rsmi: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,rsmi,slurm-$(SLURM_VERSION)-ubuntu2404-arm64-rsmi$(ROCM_VERSION).tar.gz)
+
+# Rocky 9 amd64
+.PHONY: docker-build-rocky-amd64-nvml
+docker-build-rocky-amd64-nvml: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,nvml,slurm-$(SLURM_VERSION)-rocky9-amd64-nvml$(CUDA_VERSION).tar.gz)
+
+.PHONY: docker-build-rocky-amd64-rsmi
+docker-build-rocky-amd64-rsmi: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,rsmi,slurm-$(SLURM_VERSION)-rocky9-amd64-rsmi$(ROCM_VERSION).tar.gz)
+
+# Convenience targets
+.PHONY: docker-build-all-nvml
+docker-build-all-nvml: docker-build-ubuntu-amd64-nvml docker-build-ubuntu-arm64-nvml docker-build-rocky-amd64-nvml
+
+.PHONY: docker-build-all-rsmi
+docker-build-all-rsmi: docker-build-ubuntu-amd64-rsmi docker-build-ubuntu-arm64-rsmi docker-build-rocky-amd64-rsmi
 
 .PHONY: docker-build-all
-docker-build-all: docker-build-ubuntu-amd64 docker-build-ubuntu-arm64 docker-build-rocky-amd64
+docker-build-all: docker-build-all-nvml docker-build-all-rsmi
 
 .PHONY: docker-clean
 docker-clean:

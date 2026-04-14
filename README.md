@@ -1,38 +1,53 @@
 # Slurm Package Builder
 
-This repo contains the scripts for building Slurm packages for Rocky Linux and Ubuntu, with support for GPU detection using ROCm SMI and NVIDIA ML.
+Build Slurm packages for Rocky Linux and Ubuntu with GPU plugin support (NVIDIA NVML or AMD ROCm SMI).
+
+Separate builds are produced per GPU type so you can deploy the right variant per node.
 
 ## Docker builds (recommended)
 
-Build packages inside Docker containers targeting specific distros and architectures. Packages are output to `./output/<distro>-<arch>/`.
+Packages are output as tarballs to `./output/`, named with the Slurm version, distro, architecture, and GPU library version.
 
 ```bash
-# Build Ubuntu 24.04 amd64 .deb packages
-make docker-build-ubuntu-amd64
+# Build Ubuntu 24.04 amd64 with NVIDIA NVML
+make docker-build-ubuntu-amd64-nvml
 
-# Build Ubuntu 24.04 arm64 .deb packages (via QEMU emulation)
-make docker-build-ubuntu-arm64
+# Build Ubuntu 24.04 amd64 with AMD ROCm SMI
+make docker-build-ubuntu-amd64-rsmi
 
-# Build Rocky 9 amd64 .rpm packages
-make docker-build-rocky-amd64
+# Build Rocky 9 amd64 with NVIDIA NVML
+make docker-build-rocky-amd64-nvml
 
-# Build all targets
+# Build Ubuntu 24.04 arm64 with NVIDIA NVML (via QEMU)
+make docker-build-ubuntu-arm64-nvml
+
+# Build all variants
 make docker-build-all
+```
 
-# Clean output and remove buildx builder
-make docker-clean
+### Output naming
+
+```
+output/slurm-25.11.4-ubuntu2404-amd64-nvml13.tar.gz
+output/slurm-25.11.4-ubuntu2404-amd64-rsmi6.2.4.tar.gz
+output/slurm-25.11.4-rocky9-amd64-nvml13.tar.gz
+```
+
+### Custom versions
+
+```bash
+# Override Slurm version
+make docker-build-ubuntu-amd64-nvml SLURM_VERSION=25.11.4 SLURM_MD5SUM=fc759abe52f407520b348eac9b887c1c
+
+# Override GPU library versions
+make docker-build-ubuntu-amd64-nvml CUDA_VERSION=12
+make docker-build-ubuntu-amd64-rsmi ROCM_VERSION=6.2.4
 ```
 
 ### Prerequisites
 
 - Docker with buildx plugin
 - For arm64 builds: QEMU user-static (registered automatically via `docker-setup`)
-
-### Custom Slurm version
-
-```bash
-make docker-build-ubuntu-amd64 SLURM_VERSION=25.11.4 SLURM_MD5SUM=fc759abe52f407520b348eac9b887c1c
-```
 
 ## Direct builds (inside a container or build host)
 
