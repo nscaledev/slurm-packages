@@ -19,19 +19,48 @@ on:
         description: 'ROCm version (e.g. 6.2.4)'
         required: true
         default: '6.2.4'
+      ubuntu_version:
+        description: 'Ubuntu version (leave blank to skip Ubuntu builds)'
+        required: false
+        default: '24.04'
+      rocky_version:
+        description: 'Rocky Linux version (leave blank to skip Rocky builds)'
+        required: false
+        default: '9.3'
 
 jobs:
+  matrix-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          MATRIX='{"include":['
+          FIRST=true
+
+          if [ -n "${{ inputs.ubuntu_version }}" ]; then
+            MATRIX="${MATRIX}{\"target\":\"docker-build-ubuntu-amd64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-amd64\"}"
+            MATRIX="${MATRIX},{\"target\":\"docker-build-ubuntu-arm64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-arm64\"}"
+            FIRST=false
+          fi
+
+          if [ -n "${{ inputs.rocky_version }}" ]; then
+            if [ "$FIRST" = false ]; then MATRIX="${MATRIX},"; fi
+            MATRIX="${MATRIX}{\"target\":\"docker-build-rocky-amd64\",\"name\":\"rocky${{ inputs.rocky_version }}-amd64\"}"
+            MATRIX="${MATRIX},{\"target\":\"docker-build-rocky-arm64\",\"name\":\"rocky${{ inputs.rocky_version }}-arm64\"}"
+          fi
+
+          MATRIX="${MATRIX}]}"
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+          echo "Build matrix: ${MATRIX}"
+
   build:
+    needs: matrix-setup
+    if: needs.matrix-setup.outputs.matrix != '{"include":[]}'
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - target: docker-build-ubuntu-amd64
-            name: ubuntu2404-amd64
-          - target: docker-build-ubuntu-arm64
-            name: ubuntu2404-arm64
-          - target: docker-build-rocky-amd64
-            name: rocky9-amd64
+      matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +81,9 @@ jobs:
             SLURM_VERSION=${{ inputs.slurm_version }} \
             SLURM_MD5SUM=${{ inputs.slurm_md5sum }} \
             CUDA_VERSION=${{ inputs.cuda_version }} \
-            ROCM_VERSION=${{ inputs.rocm_version }}
+            ROCM_VERSION=${{ inputs.rocm_version }} \
+            UBUNTU_VERSION=${{ inputs.ubuntu_version }} \
+            ROCKY_VERSION=${{ inputs.rocky_version }}
 
       - name: Upload build artifact
         if: success()
@@ -106,9 +137,12 @@ jobs:
             | Slurm | ${{ inputs.slurm_version }} |
             | CUDA NVML | ${{ inputs.cuda_version }} |
             | ROCm SMI | ${{ inputs.rocm_version }} |
+            | Ubuntu | ${{ inputs.ubuntu_version || 'skipped' }} |
+            | Rocky | ${{ inputs.rocky_version || 'skipped' }} |
             | Source MD5 | `${{ inputs.slurm_md5sum }}` |
 
             ### Artifacts
             Each tarball contains the built packages (.deb or .rpm) for the target platform.
-            Both GPU plugins (gpu_nvml.so and gpu_rsmi.so) are included where supported.
+            Both GPU plugins (gpu_nvml.so and gpu_rsmi.so) are included where supported (amd64).
+            arm64 builds include gpu_nvml.so only (ROCm is x86_64 only).
           files: release/*.tar.gz

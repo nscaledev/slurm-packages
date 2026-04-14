@@ -105,8 +105,13 @@ docker-build-rocky-amd64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
 	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky9-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION).tar.gz)
 
+.PHONY: docker-build-rocky-arm64
+docker-build-rocky-arm64: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/rocky9.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-rocky9-arm64-cuda$(CUDA_VERSION).tar.gz)
+
 .PHONY: docker-build-all
-docker-build-all: docker-build-ubuntu-amd64 docker-build-ubuntu-arm64 docker-build-rocky-amd64
+docker-build-all: docker-build-ubuntu-amd64 docker-build-ubuntu-arm64 docker-build-rocky-amd64 docker-build-rocky-arm64
 
 .PHONY: docker-clean
 docker-clean:
