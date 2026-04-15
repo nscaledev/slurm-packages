@@ -19,6 +19,10 @@ on:
         description: 'ROCm version (e.g. 6.4.2)'
         required: true
         default: '6.4.2'
+      pyxis_version:
+        description: 'Pyxis version (e.g. 0.23.0)'
+        required: true
+        default: '0.23.0'
       ubuntu_version:
         description: 'Ubuntu version (leave blank to skip Ubuntu builds)'
         required: false
@@ -32,35 +36,44 @@ jobs:
   matrix-setup:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      slurm-matrix: ${{ steps.set-matrix.outputs.slurm_matrix }}
+      pyxis-matrix: ${{ steps.set-matrix.outputs.pyxis_matrix }}
     steps:
       - id: set-matrix
         run: |
-          MATRIX='{"include":['
+          SLURM='{"include":['
+          PYXIS='{"include":['
           FIRST=true
 
           if [ -n "${{ inputs.ubuntu_version }}" ]; then
-            MATRIX="${MATRIX}{\"target\":\"docker-build-ubuntu-amd64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-amd64\",\"runner\":\"ubuntu-latest\"}"
-            MATRIX="${MATRIX},{\"target\":\"docker-build-ubuntu-arm64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
+            UV=$(echo "${{ inputs.ubuntu_version }}" | tr -d '.')
+            SLURM="${SLURM}{\"target\":\"docker-build-ubuntu-amd64\",\"name\":\"ubuntu${UV}-amd64\",\"runner\":\"ubuntu-latest\"}"
+            SLURM="${SLURM},{\"target\":\"docker-build-ubuntu-arm64\",\"name\":\"ubuntu${UV}-arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
+            PYXIS="${PYXIS}{\"target\":\"docker-build-pyxis-ubuntu-amd64\",\"name\":\"pyxis-ubuntu${UV}-amd64\",\"runner\":\"ubuntu-latest\",\"slurm-artifact\":\"slurm-${{ inputs.slurm_version }}-ubuntu${UV}-amd64\"}"
+            PYXIS="${PYXIS},{\"target\":\"docker-build-pyxis-ubuntu-arm64\",\"name\":\"pyxis-ubuntu${UV}-arm64\",\"runner\":\"ubuntu-24.04-arm\",\"slurm-artifact\":\"slurm-${{ inputs.slurm_version }}-ubuntu${UV}-arm64\"}"
             FIRST=false
           fi
 
           if [ -n "${{ inputs.rocky_version }}" ]; then
-            if [ "$FIRST" = false ]; then MATRIX="${MATRIX},"; fi
-            MATRIX="${MATRIX}{\"target\":\"docker-build-rocky-amd64\",\"name\":\"rocky${{ inputs.rocky_version }}-amd64\",\"runner\":\"ubuntu-latest\"}"
-            MATRIX="${MATRIX},{\"target\":\"docker-build-rocky-arm64\",\"name\":\"rocky${{ inputs.rocky_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
+            RV=$(echo "${{ inputs.rocky_version }}" | tr -d '.')
+            if [ "$FIRST" = false ]; then SLURM="${SLURM},"; PYXIS="${PYXIS},"; fi
+            SLURM="${SLURM}{\"target\":\"docker-build-rocky-amd64\",\"name\":\"rocky${RV}-amd64\",\"runner\":\"ubuntu-latest\"}"
+            SLURM="${SLURM},{\"target\":\"docker-build-rocky-arm64\",\"name\":\"rocky${RV}-arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
+            PYXIS="${PYXIS}{\"target\":\"docker-build-pyxis-rocky-amd64\",\"name\":\"pyxis-rocky${RV}-amd64\",\"runner\":\"ubuntu-latest\",\"slurm-artifact\":\"slurm-${{ inputs.slurm_version }}-rocky${RV}-amd64\"}"
+            PYXIS="${PYXIS},{\"target\":\"docker-build-pyxis-rocky-arm64\",\"name\":\"pyxis-rocky${RV}-arm64\",\"runner\":\"ubuntu-24.04-arm\",\"slurm-artifact\":\"slurm-${{ inputs.slurm_version }}-rocky${RV}-arm64\"}"
           fi
 
-          MATRIX="${MATRIX}]}"
-          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
-          echo "Build matrix: ${MATRIX}"
+          SLURM="${SLURM}]}"
+          PYXIS="${PYXIS}]}"
+          echo "slurm_matrix=${SLURM}" >> "$GITHUB_OUTPUT"
+          echo "pyxis_matrix=${PYXIS}" >> "$GITHUB_OUTPUT"
 
-  build:
+  build-slurm:
     needs: matrix-setup
-    if: needs.matrix-setup.outputs.matrix != '{"include":[]}'
+    if: needs.matrix-setup.outputs.slurm-matrix != '{"include":[]}'
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.matrix-setup.outputs.slurm-matrix) }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +81,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build packages
+      - name: Build Slurm packages
         run: |
           make ${{ matrix.target }} \
             CI=1 \
@@ -79,7 +92,7 @@ jobs:
             UBUNTU_VERSION=${{ inputs.ubuntu_version }} \
             ROCKY_VERSION=${{ inputs.rocky_version }}
 
-      - name: Upload build artifact
+      - name: Upload Slurm artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
@@ -87,8 +100,44 @@ jobs:
           path: output/*.tar.gz
           retention-days: 5
 
+  build-pyxis:
+    needs: [matrix-setup, build-slurm]
+    if: needs.matrix-setup.outputs.pyxis-matrix != '{"include":[]}'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix-setup.outputs.pyxis-matrix) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download Slurm artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.slurm-artifact }}
+          path: output/
+
+      - name: Build Pyxis packages
+        run: |
+          make ${{ matrix.target }} \
+            CI=1 \
+            SLURM_VERSION=${{ inputs.slurm_version }} \
+            PYXIS_VERSION=${{ inputs.pyxis_version }} \
+            UBUNTU_VERSION=${{ inputs.ubuntu_version }} \
+            ROCKY_VERSION=${{ inputs.rocky_version }}
+
+      - name: Upload Pyxis artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyxis-${{ inputs.pyxis_version }}-${{ matrix.name }}
+          path: output/pyxis-*.tar.gz
+          retention-days: 5
+
   release:
-    needs: build
+    needs: [build-slurm, build-pyxis]
     runs-on: ubuntu-latest
     if: always()
     permissions:
@@ -99,7 +148,7 @@ jobs:
       - name: Generate release tag
         id: tag
         run: |
-          TAG="${{ inputs.slurm_version }}-rocm${{ inputs.rocm_version }}-cuda${{ inputs.cuda_version }}-$(date +%Y%m%d)"
+          TAG="${{ inputs.slurm_version }}-rocm${{ inputs.rocm_version }}-cuda${{ inputs.cuda_version }}-pyxis${{ inputs.pyxis_version }}-$(date +%Y%m%d)"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Release tag: ${TAG}"
 
@@ -120,7 +169,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: Slurm ${{ inputs.slurm_version }} (CUDA ${{ inputs.cuda_version }}, ROCm ${{ inputs.rocm_version }})
+          name: Slurm ${{ inputs.slurm_version }} (CUDA ${{ inputs.cuda_version }}, ROCm ${{ inputs.rocm_version }}, Pyxis ${{ inputs.pyxis_version }})
           draft: true
           generate_release_notes: false
           body: |
@@ -129,6 +178,7 @@ jobs:
             | Parameter | Value |
             |-----------|-------|
             | Slurm | ${{ inputs.slurm_version }} |
+            | Pyxis | ${{ inputs.pyxis_version }} |
             | CUDA NVML | ${{ inputs.cuda_version }} |
             | ROCm | ${{ inputs.rocm_version }} |
             | Ubuntu | ${{ inputs.ubuntu_version || 'skipped' }} |
@@ -136,7 +186,9 @@ jobs:
             | Source MD5 | `${{ inputs.slurm_md5sum }}` |
 
             ### Artifacts
-            Each tarball contains the built packages (.deb or .rpm) for the target platform.
+            Each Slurm tarball contains .deb or .rpm packages for the target platform.
             Both GPU plugins (gpu_nvml.so and gpu_rsmi.so) are included where supported (amd64).
             arm64 builds include gpu_nvml.so only (ROCm is x86_64 only).
+
+            Pyxis tarballs contain the nvslurm-plugin-pyxis package built against the corresponding Slurm version.
           files: release/*.tar.gz

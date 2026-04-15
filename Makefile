@@ -15,6 +15,9 @@ ROCKY_VERSION ?= 9.3
 CUDA_VERSION ?= 13-2
 ROCM_VERSION ?= 6.4.2
 
+# Pyxis
+PYXIS_VERSION ?= 0.23.0
+
 .PHONY: default
 default: build-ubuntu
 
@@ -112,6 +115,53 @@ docker-build-rocky-arm64: docker-setup
 
 .PHONY: docker-build-all
 docker-build-all: docker-build-ubuntu-amd64 docker-build-ubuntu-arm64 docker-build-rocky-amd64 docker-build-rocky-arm64
+
+# === Pyxis build targets ===
+# These require the corresponding Slurm build to have completed first.
+# $(1) = Dockerfile, $(2) = platform, $(3) = slurm tarball glob, $(4) = pkg subdir, $(5) = output tarball base
+define pyxis-build
+	$(eval CTXDIR := $(shell mktemp -d))
+	$(eval OUTDIR := $(shell mktemp -d))
+	@mkdir -p $(CTXDIR)/$(4)
+	@tar -xzf $$(ls $(OUTPUT_DIR)/$(3) | head -1) -C $(CTXDIR)/$(4)
+	@cp $(1) $(CTXDIR)/Dockerfile
+	docker buildx build \
+		$(if $(filter 1,$(CI)),,--builder $(DOCKER_BUILDX_BUILDER)) \
+		--platform $(2) \
+		--file $(CTXDIR)/Dockerfile \
+		--build-arg SLURM_VERSION=$(SLURM_VERSION) \
+		--build-arg PYXIS_VERSION=$(PYXIS_VERSION) \
+		--build-arg UBUNTU_VERSION=$(UBUNTU_VERSION) \
+		--build-arg ROCKY_VERSION=$(ROCKY_VERSION) \
+		--target export \
+		--output type=local,dest=$(OUTDIR) \
+		$(CTXDIR)
+	@tar -czf $(OUTPUT_DIR)/$(5).tar.gz -C $(OUTDIR) .
+	@rm -rf $(CTXDIR) $(OUTDIR)
+endef
+
+.PHONY: docker-build-pyxis-ubuntu-amd64
+docker-build-pyxis-ubuntu-amd64: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call pyxis-build,docker/pyxis-ubuntu.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-amd64-*.tar.gz,slurm-debs,pyxis-$(PYXIS_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-amd64-slurm$(SLURM_VERSION))
+
+.PHONY: docker-build-pyxis-ubuntu-arm64
+docker-build-pyxis-ubuntu-arm64: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call pyxis-build,docker/pyxis-ubuntu.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-arm64-*.tar.gz,slurm-debs,pyxis-$(PYXIS_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-arm64-slurm$(SLURM_VERSION))
+
+.PHONY: docker-build-pyxis-rocky-amd64
+docker-build-pyxis-rocky-amd64: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call pyxis-build,docker/pyxis-rocky.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-amd64-*.tar.gz,slurm-rpms,pyxis-$(PYXIS_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-amd64-slurm$(SLURM_VERSION))
+
+.PHONY: docker-build-pyxis-rocky-arm64
+docker-build-pyxis-rocky-arm64: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call pyxis-build,docker/pyxis-rocky.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-arm64-*.tar.gz,slurm-rpms,pyxis-$(PYXIS_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-arm64-slurm$(SLURM_VERSION))
+
+.PHONY: docker-build-pyxis-all
+docker-build-pyxis-all: docker-build-pyxis-ubuntu-amd64 docker-build-pyxis-ubuntu-arm64 docker-build-pyxis-rocky-amd64 docker-build-pyxis-rocky-arm64
 
 .PHONY: docker-clean
 docker-clean:
