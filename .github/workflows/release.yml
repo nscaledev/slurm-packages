@@ -41,14 +41,14 @@ jobs:
 
           if [ -n "${{ inputs.ubuntu_version }}" ]; then
             MATRIX="${MATRIX}{\"target\":\"docker-build-ubuntu-amd64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-amd64\",\"runner\":\"ubuntu-latest\"}"
-            MATRIX="${MATRIX},{\"target\":\"docker-build-ubuntu-arm64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm64\"}"
+            MATRIX="${MATRIX},{\"target\":\"docker-build-ubuntu-arm64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
             FIRST=false
           fi
 
           if [ -n "${{ inputs.rocky_version }}" ]; then
             if [ "$FIRST" = false ]; then MATRIX="${MATRIX},"; fi
             MATRIX="${MATRIX}{\"target\":\"docker-build-rocky-amd64\",\"name\":\"rocky${{ inputs.rocky_version }}-amd64\",\"runner\":\"ubuntu-latest\"}"
-            MATRIX="${MATRIX},{\"target\":\"docker-build-rocky-arm64\",\"name\":\"rocky${{ inputs.rocky_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm64\"}"
+            MATRIX="${MATRIX},{\"target\":\"docker-build-rocky-arm64\",\"name\":\"rocky${{ inputs.rocky_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
           fi
 
           MATRIX="${MATRIX}]}"
