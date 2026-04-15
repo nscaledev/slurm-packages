@@ -7,6 +7,7 @@ ARG TARGETARCH
 ARG UBUNTU_VERSION
 ARG CUDA_VERSION
 ARG ROCM_VERSION
+ARG PKG_RELEASE=1
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -64,6 +65,7 @@ RUN mkdir -p /build /output
 RUN make build-ubuntu \
       SLURM_VERSION=${SLURM_VERSION} \
       SLURM_MD5SUM=${SLURM_MD5SUM} \
+      PKG_RELEASE=${PKG_RELEASE} \
       BUILD_DIR=/build
 
 RUN cp /build/*.deb /output/

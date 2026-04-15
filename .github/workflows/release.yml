@@ -38,7 +38,23 @@ jobs:
     outputs:
       slurm-matrix: ${{ steps.set-matrix.outputs.slurm_matrix }}
       pyxis-matrix: ${{ steps.set-matrix.outputs.pyxis_matrix }}
+      pkg-release: ${{ steps.calc-release.outputs.pkg_release }}
+      tag: ${{ steps.calc-release.outputs.tag }}
     steps:
+      - id: calc-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BASE="v${{ inputs.slurm_version }}"
+          LAST=$(gh release list --repo ${{ github.repository }} --json tagName --jq '.[].tagName' 2>/dev/null \
+            | grep -E "^${BASE}-[0-9]+$" \
+            | sed "s/^${BASE}-//" \
+            | sort -n \
+            | tail -1)
+          NEXT=$(( ${LAST:-0} + 1 ))
+          echo "pkg_release=${NEXT}" >> "$GITHUB_OUTPUT"
+          echo "tag=${BASE}-${NEXT}" >> "$GITHUB_OUTPUT"
+          echo "Package release: ${NEXT}, Tag: ${BASE}-${NEXT}"
       - id: set-matrix
         run: |
           SLURM='{"include":['
@@ -89,6 +105,7 @@ jobs:
             SLURM_MD5SUM=${{ inputs.slurm_md5sum }} \
             CUDA_VERSION=${{ inputs.cuda_version }} \
             ROCM_VERSION=${{ inputs.rocm_version }} \
+            PKG_RELEASE=${{ needs.matrix-setup.outputs.pkg-release }} \
             UBUNTU_VERSION=${{ inputs.ubuntu_version }} \
             ROCKY_VERSION=${{ inputs.rocky_version }}
 
@@ -137,7 +154,7 @@ jobs:
           retention-days: 5
 
   release:
-    needs: [build-slurm, build-pyxis]
+    needs: [matrix-setup, build-slurm, build-pyxis]
     runs-on: ubuntu-latest
     if: always()
     permissions:
@@ -145,20 +162,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate release tag
+      - name: Get release tag
         id: tag
         run: |
-          BASE="v${{ inputs.slurm_version }}"
-          # Find the highest existing build number for this Slurm version
-          LAST=$(gh release list --json tagName --jq '.[].tagName' 2>/dev/null \
-            | grep -E "^${BASE}-[0-9]+$" \
-            | sed "s/^${BASE}-//" \
-            | sort -n \
-            | tail -1)
-          NEXT=$(( ${LAST:-0} + 1 ))
-          TAG="${BASE}-${NEXT}"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "Release tag: ${TAG}"
+          echo "tag=${{ needs.matrix-setup.outputs.tag }}" >> "$GITHUB_OUTPUT"
+          echo "Release tag: ${{ needs.matrix-setup.outputs.tag }}"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -177,7 +185,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: ${{ steps.tag.outputs.tag }} — Slurm ${{ inputs.slurm_version }} (CUDA ${{ inputs.cuda_version }}, ROCm ${{ inputs.rocm_version }}, Pyxis ${{ inputs.pyxis_version }})
+          name: ${{ needs.matrix-setup.outputs.tag }} — Slurm ${{ inputs.slurm_version }} (CUDA ${{ inputs.cuda_version }}, ROCm ${{ inputs.rocm_version }}, Pyxis ${{ inputs.pyxis_version }})
           draft: true
           generate_release_notes: false
           body: |
