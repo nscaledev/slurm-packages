@@ -148,7 +148,15 @@ jobs:
       - name: Generate release tag
         id: tag
         run: |
-          TAG="${{ inputs.slurm_version }}-rocm${{ inputs.rocm_version }}-cuda${{ inputs.cuda_version }}-pyxis${{ inputs.pyxis_version }}-$(date +%Y%m%d)"
+          BASE="v${{ inputs.slurm_version }}"
+          # Find the highest existing build number for this Slurm version
+          LAST=$(gh release list --json tagName --jq '.[].tagName' 2>/dev/null \
+            | grep -E "^${BASE}-[0-9]+$" \
+            | sed "s/^${BASE}-//" \
+            | sort -n \
+            | tail -1)
+          NEXT=$(( ${LAST:-0} + 1 ))
+          TAG="${BASE}-${NEXT}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "Release tag: ${TAG}"
 
@@ -169,7 +177,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
-          name: Slurm ${{ inputs.slurm_version }} (CUDA ${{ inputs.cuda_version }}, ROCm ${{ inputs.rocm_version }}, Pyxis ${{ inputs.pyxis_version }})
+          name: ${{ steps.tag.outputs.tag }} — Slurm ${{ inputs.slurm_version }} (CUDA ${{ inputs.cuda_version }}, ROCm ${{ inputs.rocm_version }}, Pyxis ${{ inputs.pyxis_version }})
           draft: true
           generate_release_notes: false
           body: |
