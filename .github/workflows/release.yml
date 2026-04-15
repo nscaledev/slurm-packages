@@ -40,15 +40,15 @@ jobs:
           FIRST=true
 
           if [ -n "${{ inputs.ubuntu_version }}" ]; then
-            MATRIX="${MATRIX}{\"target\":\"docker-build-ubuntu-amd64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-amd64\"}"
-            MATRIX="${MATRIX},{\"target\":\"docker-build-ubuntu-arm64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-arm64\"}"
+            MATRIX="${MATRIX}{\"target\":\"docker-build-ubuntu-amd64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-amd64\",\"runner\":\"ubuntu-latest\"}"
+            MATRIX="${MATRIX},{\"target\":\"docker-build-ubuntu-arm64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm64\"}"
             FIRST=false
           fi
 
           if [ -n "${{ inputs.rocky_version }}" ]; then
             if [ "$FIRST" = false ]; then MATRIX="${MATRIX},"; fi
-            MATRIX="${MATRIX}{\"target\":\"docker-build-rocky-amd64\",\"name\":\"rocky${{ inputs.rocky_version }}-amd64\"}"
-            MATRIX="${MATRIX},{\"target\":\"docker-build-rocky-arm64\",\"name\":\"rocky${{ inputs.rocky_version }}-arm64\"}"
+            MATRIX="${MATRIX}{\"target\":\"docker-build-rocky-amd64\",\"name\":\"rocky${{ inputs.rocky_version }}-amd64\",\"runner\":\"ubuntu-latest\"}"
+            MATRIX="${MATRIX},{\"target\":\"docker-build-rocky-arm64\",\"name\":\"rocky${{ inputs.rocky_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm64\"}"
           fi
 
           MATRIX="${MATRIX}]}"
@@ -61,18 +61,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      - name: Set up QEMU
-        if: contains(matrix.target, 'arm64')
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
 
       - name: Build packages
         run: |
