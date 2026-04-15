@@ -24,12 +24,12 @@ on:
         required: true
         default: '0.23.0'
       ubuntu_version:
-        description: 'Ubuntu version (leave blank to skip Ubuntu builds)'
-        required: false
+        description: 'Ubuntu version (enter false to skip Ubuntu builds)'
+        required: true
         default: '24.04'
       rocky_version:
-        description: 'Rocky Linux version (leave blank to skip Rocky builds)'
-        required: false
+        description: 'Rocky Linux version (enter false to skip Rocky builds)'
+        required: true
         default: '9.3'
 
 jobs:
@@ -61,7 +61,7 @@ jobs:
           PYXIS='{"include":['
           FIRST=true
 
-          if [ -n "${{ inputs.ubuntu_version }}" ]; then
+          if [ "${{ inputs.ubuntu_version }}" != "false" ]; then
             UV=$(echo "${{ inputs.ubuntu_version }}" | tr -d '.')
             SLURM="${SLURM}{\"target\":\"docker-build-ubuntu-amd64\",\"name\":\"ubuntu${UV}-amd64\",\"runner\":\"ubuntu-latest\"}"
             SLURM="${SLURM},{\"target\":\"docker-build-ubuntu-arm64\",\"name\":\"ubuntu${UV}-arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
@@ -70,7 +70,7 @@ jobs:
             FIRST=false
           fi
 
-          if [ -n "${{ inputs.rocky_version }}" ]; then
+          if [ "${{ inputs.rocky_version }}" != "false" ]; then
             RV=$(echo "${{ inputs.rocky_version }}" | tr -d '.')
             if [ "$FIRST" = false ]; then SLURM="${SLURM},"; PYXIS="${PYXIS},"; fi
             SLURM="${SLURM}{\"target\":\"docker-build-rocky-amd64\",\"name\":\"rocky${RV}-amd64\",\"runner\":\"ubuntu-latest\"}"
