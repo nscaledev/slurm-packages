@@ -46,8 +46,13 @@ build-ubuntu: fetch-source
 build-rocky: fetch-source
 	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
 	@sed -i 's/^%define rel\t[0-9]*/%define rel\t$(PKG_RELEASE)/' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/slurm.spec
-	@tar -C $(BUILD_DIR) -cjf $(BUILD_DIR)/$(SLURM_TARBALL) slurm-$(SLURM_VERSION)
-	@rpmbuild -ta $(BUILD_DIR)/$(SLURM_TARBALL) \
+	@SRCDIR=slurm-$(SLURM_VERSION); \
+	if [ "$(PKG_RELEASE)" != "1" ]; then \
+		mv $(BUILD_DIR)/$${SRCDIR} $(BUILD_DIR)/$${SRCDIR}-$(PKG_RELEASE); \
+		SRCDIR=$${SRCDIR}-$(PKG_RELEASE); \
+	fi; \
+	tar -C $(BUILD_DIR) -cjf $(BUILD_DIR)/$${SRCDIR}.tar.bz2 $${SRCDIR}; \
+	rpmbuild -ta $(BUILD_DIR)/$${SRCDIR}.tar.bz2 \
 		--define "_smp_mflags -j$$(nproc)" \
 		--with mysql \
 		--with hwloc \
