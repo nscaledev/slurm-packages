@@ -45,7 +45,7 @@ build-ubuntu: fetch-source
 .PHONY: build-rocky
 build-rocky: fetch-source
 	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
-	@sed -i 's/^Release: *[0-9]\+/Release: $(PKG_RELEASE)/' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/slurm.spec
+	@sed -i 's/^%define rel\t[0-9]*/%define rel\t$(PKG_RELEASE)/' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/slurm.spec
 	@tar -C $(BUILD_DIR) -cjf $(BUILD_DIR)/$(SLURM_TARBALL) slurm-$(SLURM_VERSION)
 	@rpmbuild -ta $(BUILD_DIR)/$(SLURM_TARBALL) \
 		--define "_smp_mflags -j$$(nproc)" \
