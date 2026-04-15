@@ -93,22 +93,22 @@ endef
 .PHONY: docker-build-ubuntu-amd64
 docker-build-ubuntu-amd64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu2404-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
 
 .PHONY: docker-build-ubuntu-arm64
 docker-build-ubuntu-arm64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu2404-arm64-cuda$(CUDA_VERSION))
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-arm64-cuda$(CUDA_VERSION))
 
 .PHONY: docker-build-rocky-amd64
 docker-build-rocky-amd64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky9-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
+	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
 
 .PHONY: docker-build-rocky-arm64
 docker-build-rocky-arm64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/rocky9.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-rocky9-arm64-cuda$(CUDA_VERSION))
+	$(call docker-build,docker/rocky9.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-arm64-cuda$(CUDA_VERSION))
 
 .PHONY: docker-build-all
 docker-build-all: docker-build-ubuntu-amd64 docker-build-ubuntu-arm64 docker-build-rocky-amd64 docker-build-rocky-arm64
