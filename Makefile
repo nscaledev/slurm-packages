@@ -13,7 +13,7 @@ ROCKY_VERSION ?= 9.3
 
 # GPU library versions
 CUDA_VERSION ?= 13-2
-ROCM_VERSION ?= 6.2.4
+ROCM_VERSION ?= 6.4.2
 
 .PHONY: default
 default: build-ubuntu
@@ -70,7 +70,7 @@ ifneq ($(CI),1)
 endif
 
 # Helper to run a docker buildx build and package the output as a tarball
-# $(1) = Dockerfile, $(2) = platform, $(3) = tarball name
+# $(1) = Dockerfile, $(2) = platform, $(3) = tarball base name (rocm version appended automatically)
 define docker-build
 	$(eval TMPDIR := $(shell mktemp -d))
 	docker buildx build \
@@ -86,29 +86,29 @@ define docker-build
 		--target export \
 		--output type=local,dest=$(TMPDIR) \
 		.
-	@tar -czf $(OUTPUT_DIR)/$(3) -C $(TMPDIR) .
+	@tar -czf $(OUTPUT_DIR)/$(3).tar.gz -C $(TMPDIR) .
 	@rm -rf $(TMPDIR)
 endef
 
 .PHONY: docker-build-ubuntu-amd64
 docker-build-ubuntu-amd64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu2404-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION).tar.gz)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu2404-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
 
 .PHONY: docker-build-ubuntu-arm64
 docker-build-ubuntu-arm64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu2404-arm64-cuda$(CUDA_VERSION).tar.gz)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu2404-arm64-cuda$(CUDA_VERSION))
 
 .PHONY: docker-build-rocky-amd64
 docker-build-rocky-amd64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky9-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION).tar.gz)
+	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky9-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
 
 .PHONY: docker-build-rocky-arm64
 docker-build-rocky-arm64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/rocky9.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-rocky9-arm64-cuda$(CUDA_VERSION).tar.gz)
+	$(call docker-build,docker/rocky9.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-rocky9-arm64-cuda$(CUDA_VERSION))
 
 .PHONY: docker-build-all
 docker-build-all: docker-build-ubuntu-amd64 docker-build-ubuntu-arm64 docker-build-rocky-amd64 docker-build-rocky-arm64

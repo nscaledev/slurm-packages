@@ -6,6 +6,7 @@ ARG SLURM_MD5SUM=fc759abe52f407520b348eac9b887c1c
 ARG TARGETARCH
 ARG UBUNTU_VERSION
 ARG CUDA_VERSION
+ARG ROCM_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -22,12 +23,19 @@ RUN apt-get update && apt-get -y upgrade && \
       devscripts \
       equivs \
       fakeroot \
+      gnupg \
       lsb-release \
-      pkg-config
+      pkg-config \
+      wget
 
-# ROCm SMI (amd64 only)
+# AMD ROCm repo + SMI (amd64 only)
 RUN if [ "${TARGETARCH}" = "amd64" ]; then \
-      apt-get -y install librocm-smi-dev; \
+      CODENAME=$(. /etc/os-release && echo ${VERSION_CODENAME}) && \
+      wget -qO - https://repo.radeon.com/rocm/rocm.gpg.key | gpg --dearmor > /etc/apt/keyrings/rocm.gpg && \
+      echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/${ROCM_VERSION} ${CODENAME} main" \
+        > /etc/apt/sources.list.d/rocm.list && \
+      apt-get update && \
+      apt-get -y install rocm-smi-lib; \
     fi
 
 # NVIDIA NVML (amd64 and arm64)

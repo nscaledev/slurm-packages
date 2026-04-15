@@ -16,9 +16,9 @@ on:
         required: true
         default: '13-2'
       rocm_version:
-        description: 'ROCm version (e.g. 6.2.4)'
+        description: 'ROCm version (e.g. 6.4.2)'
         required: true
-        default: '6.2.4'
+        default: '6.4.2'
       ubuntu_version:
         description: 'Ubuntu version (leave blank to skip Ubuntu builds)'
         required: false
@@ -130,7 +130,7 @@ jobs:
             |-----------|-------|
             | Slurm | ${{ inputs.slurm_version }} |
             | CUDA NVML | ${{ inputs.cuda_version }} |
-            | ROCm SMI | ${{ inputs.rocm_version }} |
+            | ROCm | ${{ inputs.rocm_version }} |
             | Ubuntu | ${{ inputs.ubuntu_version || 'skipped' }} |
             | Rocky | ${{ inputs.rocky_version || 'skipped' }} |
             | Source MD5 | `${{ inputs.slurm_md5sum }}` |

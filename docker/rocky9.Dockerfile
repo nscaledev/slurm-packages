@@ -8,9 +8,11 @@ ARG CUDA_VERSION
 ARG ROCM_VERSION
 ARG TARGETARCH
 
-# Install repos
-RUN dnf install -y epel-release dnf-plugins-core && \
-    if [ "${TARGETARCH}" = "arm64" ]; then \
+# Install base tools
+RUN dnf install -y epel-release dnf-plugins-core
+
+# NVIDIA CUDA repo
+RUN if [ "${TARGETARCH}" = "arm64" ]; then \
       CUDA_REPO_ARCH=sbsa; \
     else \
       CUDA_REPO_ARCH=x86_64; \
@@ -19,7 +21,8 @@ RUN dnf install -y epel-release dnf-plugins-core && \
 
 # AMD ROCm repo (amd64 only)
 RUN if [ "${TARGETARCH}" = "amd64" ]; then \
-      dnf install -y https://repo.radeon.com/amdgpu-install/${ROCM_VERSION}/rhel/${ROCKY_VERSION}/amdgpu-install-6.2.60204-1.el9.noarch.rpm; \
+      printf '[rocm]\nname=ROCm %s\nbaseurl=https://repo.radeon.com/rocm/el9/%s/main\nenabled=1\npriority=50\ngpgcheck=1\ngpgkey=https://repo.radeon.com/rocm/rocm.gpg.key\n' \
+        "${ROCM_VERSION}" "${ROCM_VERSION}" > /etc/yum.repos.d/rocm.repo; \
     fi
 
 # Install build dependencies
@@ -54,9 +57,9 @@ RUN dnf install -y --enablerepo=devel --enablerepo=crb \
       systemd \
       systemd-rpm-macros
 
-# ROCm SMI (amd64 only)
+# ROCm SMI + core (amd64 only)
 RUN if [ "${TARGETARCH}" = "amd64" ]; then \
-      dnf install -y --enablerepo=devel --enablerepo=crb rocm-smi-lib; \
+      dnf install -y rocm-smi-lib; \
     fi
 
 # Symlink NVML headers/libs to standard paths so Slurm configure can find them
