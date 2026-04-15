@@ -12,9 +12,9 @@ on:
         required: true
         default: 'fc759abe52f407520b348eac9b887c1c'
       cuda_version:
-        description: 'CUDA NVML version (e.g. 13-2)'
+        description: 'CUDA NVML version (e.g. 13-1)'
         required: true
-        default: '13-2'
+        default: '13-1'
       rocm_version:
         description: 'ROCm version (e.g. 6.4.2)'
         required: true

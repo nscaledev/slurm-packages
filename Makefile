@@ -12,7 +12,7 @@ UBUNTU_VERSION ?= 24.04
 ROCKY_VERSION ?= 9.3
 
 # GPU library versions
-CUDA_VERSION ?= 13-2
+CUDA_VERSION ?= 13-1
 ROCM_VERSION ?= 6.4.2
 
 # Pyxis
@@ -96,22 +96,22 @@ endef
 .PHONY: docker-build-ubuntu-amd64
 docker-build-ubuntu-amd64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
+	$(call docker-build,docker/slurm-ubuntu.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
 
 .PHONY: docker-build-ubuntu-arm64
 docker-build-ubuntu-arm64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-arm64-cuda$(CUDA_VERSION))
+	$(call docker-build,docker/slurm-ubuntu.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-arm64-cuda$(CUDA_VERSION))
 
 .PHONY: docker-build-rocky-amd64
 docker-build-rocky-amd64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
+	$(call docker-build,docker/slurm-rocky.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
 
 .PHONY: docker-build-rocky-arm64
 docker-build-rocky-arm64: docker-setup
 	@mkdir -p $(OUTPUT_DIR)
-	$(call docker-build,docker/rocky9.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-arm64-cuda$(CUDA_VERSION))
+	$(call docker-build,docker/slurm-rocky.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-arm64-cuda$(CUDA_VERSION))
 
 .PHONY: docker-build-all
 docker-build-all: docker-build-ubuntu-amd64 docker-build-ubuntu-arm64 docker-build-rocky-amd64 docker-build-rocky-arm64
