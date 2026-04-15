@@ -7,6 +7,14 @@ SLURM_SOURCE ?= https://download.schedmd.com/slurm/$(SLURM_TARBALL)
 
 BUILD_DIR ?= /build
 
+# OS image versions
+UBUNTU_VERSION ?= 24.04
+ROCKY_VERSION ?= 9.3
+
+# GPU library versions
+CUDA_VERSION ?= 13-2
+ROCM_VERSION ?= 6.4.2
+
 .PHONY: default
 default: build-ubuntu
 
@@ -22,14 +30,90 @@ $(SLURM_TARBALL):
 
 .PHONY: build-ubuntu
 build-ubuntu: fetch-source
-	@sudo apt -y update
-	@sudo apt -y upgrade
-	@sudo ln -sf /usr/share/zoneinfo/Europe/London /etc/localtime
-	@sudo DEBIAN_FRONTEND=noninteractive apt -y install tzdata
-	@sudo dpkg-reconfigure --frontend noninteractive tzdata
-	@sudo apt -y install bc build-essential curl devscripts fakeroot equivs lsb-release pkg-config
-	@sudo apt -y install librocm-smi-dev libnvidia-ml-dev
 	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
 	@pushd $(BUILD_DIR)/slurm-$(SLURM_VERSION) && \
-		sudo mk-build-deps -ir --tool='apt-get -qq -y -o Debug::pkgProblemResolver=yes --no-install-recommends' debian/control && \
-		debuild -b -uc -us
+		mk-build-deps -ir --tool='apt-get -qq -y -o Debug::pkgProblemResolver=yes --no-install-recommends' debian/control && \
+		DEB_BUILD_OPTIONS="parallel=$$(nproc)" debuild -b -uc -us
+
+.PHONY: build-rocky
+build-rocky: fetch-source
+	@rpmbuild -ta $(BUILD_DIR)/$(SLURM_TARBALL) \
+		--define "_smp_mflags -j$$(nproc)" \
+		--with mysql \
+		--with hwloc \
+		--with numa \
+		--with pmix \
+		--with slurmrestd \
+		--with lua \
+		--with yaml \
+		--with jwt \
+		--with hdf5 \
+		--with freeipmi \
+		--with rdkafka \
+		--with rrdtool
+
+# === Docker build targets ===
+
+DOCKER_BUILDX_BUILDER ?= slurm-builder
+OUTPUT_DIR ?= ./output
+
+# In CI (e.g. GitHub Actions), buildx and QEMU are set up by dedicated actions.
+# Set CI=1 to skip docker-setup and use the default builder.
+CI ?= 0
+
+.PHONY: docker-setup
+docker-setup:
+ifneq ($(CI),1)
+	@docker buildx inspect $(DOCKER_BUILDX_BUILDER) >/dev/null 2>&1 || \
+		docker buildx create --name $(DOCKER_BUILDX_BUILDER) --driver docker-container --bootstrap
+	@docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
+endif
+
+# Helper to run a docker buildx build and package the output as a tarball
+# $(1) = Dockerfile, $(2) = platform, $(3) = tarball base name (rocm version appended automatically)
+define docker-build
+	$(eval TMPDIR := $(shell mktemp -d))
+	docker buildx build \
+		$(if $(filter 1,$(CI)),,--builder $(DOCKER_BUILDX_BUILDER)) \
+		--platform $(2) \
+		--file $(1) \
+		--build-arg SLURM_VERSION=$(SLURM_VERSION) \
+		--build-arg SLURM_MD5SUM=$(SLURM_MD5SUM) \
+		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
+		--build-arg ROCM_VERSION=$(ROCM_VERSION) \
+		--build-arg UBUNTU_VERSION=$(UBUNTU_VERSION) \
+		--build-arg ROCKY_VERSION=$(ROCKY_VERSION) \
+		--target export \
+		--output type=local,dest=$(TMPDIR) \
+		.
+	@tar -czf $(OUTPUT_DIR)/$(3).tar.gz -C $(TMPDIR) .
+	@rm -rf $(TMPDIR)
+endef
+
+.PHONY: docker-build-ubuntu-amd64
+docker-build-ubuntu-amd64: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
+
+.PHONY: docker-build-ubuntu-arm64
+docker-build-ubuntu-arm64: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/ubuntu2404.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-ubuntu$(subst .,,$(UBUNTU_VERSION))-arm64-cuda$(CUDA_VERSION))
+
+.PHONY: docker-build-rocky-amd64
+docker-build-rocky-amd64: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/rocky9.Dockerfile,linux/amd64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-amd64-cuda$(CUDA_VERSION)-rocm$(ROCM_VERSION))
+
+.PHONY: docker-build-rocky-arm64
+docker-build-rocky-arm64: docker-setup
+	@mkdir -p $(OUTPUT_DIR)
+	$(call docker-build,docker/rocky9.Dockerfile,linux/arm64,slurm-$(SLURM_VERSION)-rocky$(subst .,,$(ROCKY_VERSION))-arm64-cuda$(CUDA_VERSION))
+
+.PHONY: docker-build-all
+docker-build-all: docker-build-ubuntu-amd64 docker-build-ubuntu-arm64 docker-build-rocky-amd64 docker-build-rocky-arm64
+
+.PHONY: docker-clean
+docker-clean:
+	rm -rf $(OUTPUT_DIR)
+	docker buildx rm $(DOCKER_BUILDX_BUILDER) 2>/dev/null || true

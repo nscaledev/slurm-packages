@@ -1,0 +1,142 @@
+name: Build and Release Slurm Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      slurm_version:
+        description: 'Slurm version'
+        required: true
+        default: '25.11.4'
+      slurm_md5sum:
+        description: 'Slurm source tarball MD5 checksum'
+        required: true
+        default: 'fc759abe52f407520b348eac9b887c1c'
+      cuda_version:
+        description: 'CUDA NVML version (e.g. 13-2)'
+        required: true
+        default: '13-2'
+      rocm_version:
+        description: 'ROCm version (e.g. 6.4.2)'
+        required: true
+        default: '6.4.2'
+      ubuntu_version:
+        description: 'Ubuntu version (leave blank to skip Ubuntu builds)'
+        required: false
+        default: '24.04'
+      rocky_version:
+        description: 'Rocky Linux version (leave blank to skip Rocky builds)'
+        required: false
+        default: '9.3'
+
+jobs:
+  matrix-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          MATRIX='{"include":['
+          FIRST=true
+
+          if [ -n "${{ inputs.ubuntu_version }}" ]; then
+            MATRIX="${MATRIX}{\"target\":\"docker-build-ubuntu-amd64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-amd64\",\"runner\":\"ubuntu-latest\"}"
+            MATRIX="${MATRIX},{\"target\":\"docker-build-ubuntu-arm64\",\"name\":\"ubuntu${{ inputs.ubuntu_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
+            FIRST=false
+          fi
+
+          if [ -n "${{ inputs.rocky_version }}" ]; then
+            if [ "$FIRST" = false ]; then MATRIX="${MATRIX},"; fi
+            MATRIX="${MATRIX}{\"target\":\"docker-build-rocky-amd64\",\"name\":\"rocky${{ inputs.rocky_version }}-amd64\",\"runner\":\"ubuntu-latest\"}"
+            MATRIX="${MATRIX},{\"target\":\"docker-build-rocky-arm64\",\"name\":\"rocky${{ inputs.rocky_version }}-arm64\",\"runner\":\"ubuntu-24.04-arm\"}"
+          fi
+
+          MATRIX="${MATRIX}]}"
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+          echo "Build matrix: ${MATRIX}"
+
+  build:
+    needs: matrix-setup
+    if: needs.matrix-setup.outputs.matrix != '{"include":[]}'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix-setup.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build packages
+        run: |
+          make ${{ matrix.target }} \
+            CI=1 \
+            SLURM_VERSION=${{ inputs.slurm_version }} \
+            SLURM_MD5SUM=${{ inputs.slurm_md5sum }} \
+            CUDA_VERSION=${{ inputs.cuda_version }} \
+            ROCM_VERSION=${{ inputs.rocm_version }} \
+            UBUNTU_VERSION=${{ inputs.ubuntu_version }} \
+            ROCKY_VERSION=${{ inputs.rocky_version }}
+
+      - name: Upload build artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slurm-${{ inputs.slurm_version }}-${{ matrix.name }}
+          path: output/*.tar.gz
+          retention-days: 5
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate release tag
+        id: tag
+        run: |
+          TAG="${{ inputs.slurm_version }}-rocm${{ inputs.rocm_version }}-cuda${{ inputs.cuda_version }}-$(date +%Y%m%d)"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Release tag: ${TAG}"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: false
+
+      - name: Collect tarballs
+        run: |
+          mkdir -p release
+          find artifacts -name '*.tar.gz' -exec cp {} release/ \;
+          echo "Release artifacts:"
+          ls -lh release/
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Slurm ${{ inputs.slurm_version }} (CUDA ${{ inputs.cuda_version }}, ROCm ${{ inputs.rocm_version }})
+          draft: true
+          generate_release_notes: false
+          body: |
+            ## Slurm ${{ inputs.slurm_version }} packages
+
+            | Parameter | Value |
+            |-----------|-------|
+            | Slurm | ${{ inputs.slurm_version }} |
+            | CUDA NVML | ${{ inputs.cuda_version }} |
+            | ROCm | ${{ inputs.rocm_version }} |
+            | Ubuntu | ${{ inputs.ubuntu_version || 'skipped' }} |
+            | Rocky | ${{ inputs.rocky_version || 'skipped' }} |
+            | Source MD5 | `${{ inputs.slurm_md5sum }}` |
+
+            ### Artifacts
+            Each tarball contains the built packages (.deb or .rpm) for the target platform.
+            Both GPU plugins (gpu_nvml.so and gpu_rsmi.so) are included where supported (amd64).
+            arm64 builds include gpu_nvml.so only (ROCm is x86_64 only).
+          files: release/*.tar.gz
