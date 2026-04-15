@@ -18,6 +18,9 @@ ROCM_VERSION ?= 6.4.2
 # Pyxis
 PYXIS_VERSION ?= 0.23.0
 
+# Package release number (auto-incremented in CI)
+PKG_RELEASE ?= 1
+
 .PHONY: default
 default: build-ubuntu
 
@@ -34,13 +37,22 @@ $(SLURM_TARBALL):
 .PHONY: build-ubuntu
 build-ubuntu: fetch-source
 	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
+	@sed -i '1s/-[0-9]\+)/-$(PKG_RELEASE))/' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/changelog
 	@pushd $(BUILD_DIR)/slurm-$(SLURM_VERSION) && \
 		mk-build-deps -ir --tool='apt-get -qq -y -o Debug::pkgProblemResolver=yes --no-install-recommends' debian/control && \
 		DEB_BUILD_OPTIONS="parallel=$$(nproc)" debuild -b -uc -us
 
 .PHONY: build-rocky
 build-rocky: fetch-source
-	@rpmbuild -ta $(BUILD_DIR)/$(SLURM_TARBALL) \
+	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
+	@sed -i 's/^%define rel\t[0-9]*/%define rel\t$(PKG_RELEASE)/' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/slurm.spec
+	@SRCDIR=slurm-$(SLURM_VERSION); \
+	if [ "$(PKG_RELEASE)" != "1" ]; then \
+		mv $(BUILD_DIR)/$${SRCDIR} $(BUILD_DIR)/$${SRCDIR}-$(PKG_RELEASE); \
+		SRCDIR=$${SRCDIR}-$(PKG_RELEASE); \
+	fi; \
+	tar -C $(BUILD_DIR) -cjf $(BUILD_DIR)/$${SRCDIR}.tar.bz2 $${SRCDIR}; \
+	rpmbuild -ta $(BUILD_DIR)/$${SRCDIR}.tar.bz2 \
 		--define "_smp_mflags -j$$(nproc)" \
 		--with mysql \
 		--with hwloc \
@@ -84,6 +96,7 @@ define docker-build
 		--build-arg SLURM_MD5SUM=$(SLURM_MD5SUM) \
 		--build-arg CUDA_VERSION=$(CUDA_VERSION) \
 		--build-arg ROCM_VERSION=$(ROCM_VERSION) \
+		--build-arg PKG_RELEASE=$(PKG_RELEASE) \
 		--build-arg UBUNTU_VERSION=$(UBUNTU_VERSION) \
 		--build-arg ROCKY_VERSION=$(ROCKY_VERSION) \
 		--target export \

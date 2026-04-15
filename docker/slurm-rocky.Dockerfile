@@ -6,6 +6,7 @@ ARG SLURM_MD5SUM=fc759abe52f407520b348eac9b887c1c
 ARG ROCKY_VERSION
 ARG CUDA_VERSION
 ARG ROCM_VERSION
+ARG PKG_RELEASE=1
 ARG TARGETARCH
 
 # Install base tools
@@ -81,6 +82,7 @@ RUN mkdir -p /build /output
 RUN make build-rocky \
       SLURM_VERSION=${SLURM_VERSION} \
       SLURM_MD5SUM=${SLURM_MD5SUM} \
+      PKG_RELEASE=${PKG_RELEASE} \
       BUILD_DIR=/build
 
 RUN cp ~/rpmbuild/RPMS/*/*.rpm /output/
