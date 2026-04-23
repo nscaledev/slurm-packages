@@ -66,12 +66,14 @@ RUN if [ "${TARGETARCH}" = "amd64" ]; then \
 # Symlink NVML headers/libs to standard paths so Slurm configure can find them
 RUN CUDA_MAJ_MIN=$(echo "${CUDA_VERSION}" | tr '-' '.') && \
     if [ "${TARGETARCH}" = "arm64" ]; then \
-      CUDA_ARCH=aarch64-linux; LIB_DIR=/usr/lib64; \
+      CUDA_ARCH=sbsa-linux; LIB_DIR=/usr/lib64; \
     else \
       CUDA_ARCH=x86_64-linux; LIB_DIR=/usr/lib64; \
     fi && \
     ln -s /usr/local/cuda-${CUDA_MAJ_MIN}/targets/${CUDA_ARCH}/include/nvml.h /usr/include/nvml.h && \
-    ln -s /usr/local/cuda-${CUDA_MAJ_MIN}/targets/${CUDA_ARCH}/lib/stubs/libnvidia-ml.so ${LIB_DIR}/libnvidia-ml.so
+    ln -s /usr/local/cuda-${CUDA_MAJ_MIN}/targets/${CUDA_ARCH}/lib/stubs/libnvidia-ml.so ${LIB_DIR}/libnvidia-ml.so && \
+    readlink -e /usr/include/nvml.h && \
+    readlink -e ${LIB_DIR}/libnvidia-ml.so
 
 WORKDIR /workspace
 COPY Makefile .

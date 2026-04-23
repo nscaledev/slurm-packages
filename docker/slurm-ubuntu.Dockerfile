@@ -42,7 +42,7 @@ RUN if [ "${TARGETARCH}" = "amd64" ]; then \
 # NVIDIA NVML (amd64 and arm64)
 RUN UBUNTU_SHORT=$(echo "${UBUNTU_VERSION}" | tr -d '.') && \
     if [ "${TARGETARCH}" = "arm64" ]; then \
-      REPO_ARCH=sbsa; CUDA_ARCH=aarch64-linux; \
+      REPO_ARCH=sbsa; CUDA_ARCH=sbsa-linux; \
     else \
       REPO_ARCH=x86_64; CUDA_ARCH=x86_64-linux; \
     fi && \
@@ -54,7 +54,9 @@ RUN UBUNTU_SHORT=$(echo "${UBUNTU_VERSION}" | tr -d '.') && \
     apt-get -y install cuda-nvml-dev-${CUDA_VERSION} && \
     CUDA_MAJ_MIN=$(echo "${CUDA_VERSION}" | tr '-' '.') && \
     ln -s /usr/local/cuda-${CUDA_MAJ_MIN}/targets/${CUDA_ARCH}/include/nvml.h /usr/include/nvml.h && \
-    ln -s /usr/local/cuda-${CUDA_MAJ_MIN}/targets/${CUDA_ARCH}/lib/stubs/libnvidia-ml.so /usr/lib/libnvidia-ml.so
+    ln -s /usr/local/cuda-${CUDA_MAJ_MIN}/targets/${CUDA_ARCH}/lib/stubs/libnvidia-ml.so /usr/lib/libnvidia-ml.so && \
+    readlink -e /usr/include/nvml.h && \
+    readlink -e /usr/lib/libnvidia-ml.so
 
 WORKDIR /workspace
 COPY Makefile .
