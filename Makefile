@@ -57,6 +57,7 @@ build-rocky: fetch-source
 		--with mysql \
 		--with hwloc \
 		--with numa \
+		--with nvml \
 		--with pmix \
 		--with slurmrestd \
 		--with lua \
