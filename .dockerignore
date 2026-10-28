@@ -1,5 +1,6 @@
 *
 !Makefile
-!packaging/
-!packaging/ubuntu/
-!packaging/ubuntu/**
+!overlays/
+!overlays/slurm/
+!overlays/slurm/ubuntu/
+!overlays/slurm/ubuntu/**

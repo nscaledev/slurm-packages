@@ -28,7 +28,7 @@ release. Ubuntu bundles include `slurm-smd-contribs`; Rocky bundles include
 The Ubuntu contrib package requires the matching client and Perl API package
 versions. Packages are exported with the rest of the build output; install them
 on the desired nodes later. The Debian packaging additions live in
-`packaging/ubuntu/` and are applied to each downloaded Slurm source release.
+`overlays/slurm/ubuntu/` and are applied to each downloaded Slurm source release.
 
 ### Pyxis
 

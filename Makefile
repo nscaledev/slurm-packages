@@ -37,8 +37,8 @@ $(SLURM_TARBALL):
 .PHONY: build-ubuntu
 build-ubuntu: fetch-source
 	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
-	@cp packaging/ubuntu/contribs.mk packaging/ubuntu/slurm-smd-contribs.install $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/
-	@cat packaging/ubuntu/slurm-smd-contribs.control >> $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/control
+	@cp overlays/slurm/ubuntu/contribs.mk overlays/slurm/ubuntu/slurm-smd-contribs.install $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/
+	@cat overlays/slurm/ubuntu/slurm-smd-contribs.control >> $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/control
 	@printf '\ninclude debian/contribs.mk\n' >> $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/rules
 	@sed -i '1s/-[0-9]\+)/-$(PKG_RELEASE))/' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/changelog
 	@pushd $(BUILD_DIR)/slurm-$(SLURM_VERSION) && \
