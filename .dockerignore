@@ -1,2 +1,5 @@
 *
 !Makefile
+!packaging/
+!packaging/ubuntu/
+!packaging/ubuntu/**
