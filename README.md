@@ -26,9 +26,20 @@ release. Ubuntu bundles include `slurm-smd-contribs`; Rocky bundles include
 `smail`, `sjobexitmod`, `sjstat`, and `sgather`.
 
 The Ubuntu contrib package requires the matching client and Perl API package
-versions. Packages are exported with the rest of the build output; install them
-on the desired nodes later. The Debian packaging additions live in
-`overlays/slurm/ubuntu/` and are applied to each downloaded Slurm source release.
+versions, and recommends a `mail` provider for `smail`. Packages are exported with
+the rest of the build output; install them on the desired nodes later. The Debian
+packaging additions live in `overlays/slurm/ubuntu/` and are applied to each
+downloaded Slurm source release.
+
+The Ubuntu build fails early when a Slurm release changes its contribs, so new
+tools are not silently dropped:
+
+- a directory added to or removed from `contribs/` must be sorted into
+  `CONTRIB_TOOLS` (packaged) or `CONTRIB_SKIP` in `overlays/slurm/ubuntu/contribs.mk`;
+- if upstream starts shipping its own `slurm-smd-contribs`, review it and remove
+  the overlay.
+
+New scripts inside an already listed contrib directory are packaged automatically.
 
 ### Pyxis
 

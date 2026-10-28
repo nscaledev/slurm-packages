@@ -1,12 +1,14 @@
 
 Package: slurm-smd-contribs
-Architecture: all
+Architecture: any
 Depends:
- slurm-smd-client (= ${source:Version}),
- slurm-smd-libslurm-perl (= ${source:Version}),
+ slurm-smd-client (= ${binary:Version}),
+ slurm-smd-libslurm-perl (= ${binary:Version}),
  openssh-client,
  ${perl:Depends},
  ${misc:Depends}
+Recommends:
+ mailutils | mailx
 Description: Slurm contributed command-line tools
  Job efficiency reports (seff), accounting details in notification mail (smail),
  job exit code management (sjobexitmod), job summaries (sjstat), and remote
