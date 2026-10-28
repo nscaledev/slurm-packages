@@ -60,6 +60,7 @@ RUN UBUNTU_SHORT=$(echo "${UBUNTU_VERSION}" | tr -d '.') && \
 
 WORKDIR /workspace
 COPY Makefile .
+COPY overlays/slurm/ubuntu/ overlays/slurm/ubuntu/
 
 ENV BUILD_DIR=/build
 RUN mkdir -p /build /output

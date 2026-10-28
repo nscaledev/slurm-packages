@@ -18,6 +18,29 @@ make docker-build-rocky-arm64     # Rocky arm64 (NVML only)
 make docker-build-all             # All Slurm targets
 ```
 
+### Contributed tools
+
+Every Slurm build also produces optional contributed tools from the same source
+release. Ubuntu bundles include `slurm-smd-contribs`; Rocky bundles include
+`slurm-contribs`, with `sgather` in the base `slurm` package. The tools are `seff`,
+`smail`, `sjobexitmod`, `sjstat`, and `sgather`.
+
+The Ubuntu contrib package requires the matching client and Perl API package
+versions, and recommends a `mail` provider for `smail`. Packages are exported with
+the rest of the build output; install them on the desired nodes later. The Debian
+packaging additions live in `overlays/slurm/ubuntu/` and are applied to each
+downloaded Slurm source release.
+
+The Ubuntu build fails early when a Slurm release changes its contribs, so new
+tools are not silently dropped:
+
+- a directory added to or removed from `contribs/` must be sorted into
+  `CONTRIB_TOOLS` (packaged) or `CONTRIB_SKIP` in `overlays/slurm/ubuntu/contribs.mk`;
+- if upstream starts shipping its own `slurm-smd-contribs`, review it and remove
+  the overlay.
+
+New scripts inside an already listed contrib directory are packaged automatically.
+
 ### Pyxis
 
 Pyxis builds require the corresponding Slurm build to have completed first.

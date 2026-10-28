@@ -37,6 +37,14 @@ $(SLURM_TARBALL):
 .PHONY: build-ubuntu
 build-ubuntu: fetch-source
 	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
+	@if grep -q '^Package: slurm-smd-contribs$$' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/control; then \
+		echo "Slurm $(SLURM_VERSION) already packages slurm-smd-contribs: review and remove overlays/slurm/ubuntu/"; \
+		exit 1; \
+	fi
+	@cp overlays/slurm/ubuntu/contribs.mk $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/
+	@cat overlays/slurm/ubuntu/slurm-smd-contribs.control >> $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/control
+	@printf '\ninclude debian/contribs.mk\n' >> $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/rules
+	@$(MAKE) -C $(BUILD_DIR)/slurm-$(SLURM_VERSION) -f debian/contribs.mk check-contribs
 	@sed -i '1s/-[0-9]\+)/-$(PKG_RELEASE))/' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/changelog
 	@pushd $(BUILD_DIR)/slurm-$(SLURM_VERSION) && \
 		mk-build-deps -ir --tool='apt-get -qq -y -o Debug::pkgProblemResolver=yes --no-install-recommends' debian/control && \
