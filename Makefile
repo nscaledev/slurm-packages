@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
-SLURM_VERSION ?= 25.11.4
-SLURM_MD5SUM ?= fc759abe52f407520b348eac9b887c1c
+SLURM_VERSION ?= 26.05.5
+SLURM_MD5SUM ?= 3c96d51b61c05d5df3b96d7da6aad04d
 SLURM_TARBALL ?= slurm-$(SLURM_VERSION).tar.bz2
 SLURM_SOURCE ?= https://download.schedmd.com/slurm/$(SLURM_TARBALL)
 
@@ -16,7 +16,7 @@ CUDA_VERSION ?= 13-1
 ROCM_VERSION ?= 6.4.2
 
 # Pyxis
-PYXIS_VERSION ?= 0.23.0
+PYXIS_VERSION ?= 0.24.0
 
 # Package release number (auto-incremented in CI)
 PKG_RELEASE ?= 1

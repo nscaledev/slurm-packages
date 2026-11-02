@@ -6,11 +6,11 @@ on:
       slurm_version:
         description: 'Slurm version'
         required: true
-        default: '25.11.4'
+        default: '26.05.5'
       slurm_md5sum:
         description: 'Slurm source tarball MD5 checksum'
         required: true
-        default: 'fc759abe52f407520b348eac9b887c1c'
+        default: '3c96d51b61c05d5df3b96d7da6aad04d'
       cuda_version:
         description: 'CUDA NVML version (e.g. 13-1)'
         required: true
@@ -20,9 +20,9 @@ on:
         required: true
         default: '6.4.2'
       pyxis_version:
-        description: 'Pyxis version (e.g. 0.23.0)'
+        description: 'Pyxis version (e.g. 0.24.0)'
         required: true
-        default: '0.23.0'
+        default: '0.24.0'
       ubuntu_version:
         description: 'Ubuntu version (enter false to skip Ubuntu builds)'
         required: true
