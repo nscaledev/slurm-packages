@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
-SLURM_VERSION ?= 25.11.4
-SLURM_MD5SUM ?= fc759abe52f407520b348eac9b887c1c
+SLURM_VERSION ?= 26.05.5
+SLURM_MD5SUM ?= 3c96d51b61c05d5df3b96d7da6aad04d
 SLURM_TARBALL ?= slurm-$(SLURM_VERSION).tar.bz2
 SLURM_SOURCE ?= https://download.schedmd.com/slurm/$(SLURM_TARBALL)
 
@@ -16,7 +16,7 @@ CUDA_VERSION ?= 13-1
 ROCM_VERSION ?= 6.4.2
 
 # Pyxis
-PYXIS_VERSION ?= 0.23.0
+PYXIS_VERSION ?= 0.24.0
 
 # Package release number (auto-incremented in CI)
 PKG_RELEASE ?= 1
@@ -37,6 +37,14 @@ $(SLURM_TARBALL):
 .PHONY: build-ubuntu
 build-ubuntu: fetch-source
 	@tar -C $(BUILD_DIR) -xf $(BUILD_DIR)/$(SLURM_TARBALL)
+	@if grep -q '^Package: slurm-smd-contribs$$' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/control; then \
+		echo "Slurm $(SLURM_VERSION) already packages slurm-smd-contribs: review and remove overlays/slurm/ubuntu/"; \
+		exit 1; \
+	fi
+	@cp overlays/slurm/ubuntu/contribs.mk $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/
+	@cat overlays/slurm/ubuntu/slurm-smd-contribs.control >> $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/control
+	@printf '\ninclude debian/contribs.mk\n' >> $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/rules
+	@$(MAKE) -C $(BUILD_DIR)/slurm-$(SLURM_VERSION) -f debian/contribs.mk check-contribs
 	@sed -i '1s/-[0-9]\+)/-$(PKG_RELEASE))/' $(BUILD_DIR)/slurm-$(SLURM_VERSION)/debian/changelog
 	@pushd $(BUILD_DIR)/slurm-$(SLURM_VERSION) && \
 		mk-build-deps -ir --tool='apt-get -qq -y -o Debug::pkgProblemResolver=yes --no-install-recommends' debian/control && \

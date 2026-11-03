@@ -18,6 +18,29 @@ make docker-build-rocky-arm64     # Rocky arm64 (NVML only)
 make docker-build-all             # All Slurm targets
 ```
 
+### Contributed tools
+
+Every Slurm build also produces optional contributed tools from the same source
+release. Ubuntu bundles include `slurm-smd-contribs`; Rocky bundles include
+`slurm-contribs`, with `sgather` in the base `slurm` package. The tools are `seff`,
+`smail`, `sjobexitmod`, `sjstat`, and `sgather`.
+
+The Ubuntu contrib package requires the matching client and Perl API package
+versions, and recommends a `mail` provider for `smail`. Packages are exported with
+the rest of the build output; install them on the desired nodes later. The Debian
+packaging additions live in `overlays/slurm/ubuntu/` and are applied to each
+downloaded Slurm source release.
+
+The Ubuntu build fails early when a Slurm release changes its contribs, so new
+tools are not silently dropped:
+
+- a directory added to or removed from `contribs/` must be sorted into
+  `CONTRIB_TOOLS` (packaged) or `CONTRIB_SKIP` in `overlays/slurm/ubuntu/contribs.mk`;
+- if upstream starts shipping its own `slurm-smd-contribs`, review it and remove
+  the overlay.
+
+New scripts inside an already listed contrib directory are packaged automatically.
+
 ### Pyxis
 
 Pyxis builds require the corresponding Slurm build to have completed first.
@@ -34,19 +57,19 @@ make docker-build-pyxis-all
 
 | Variable | Default | Description |
 |---|---|---|
-| `SLURM_VERSION` | 25.11.4 | Slurm source version |
-| `SLURM_MD5SUM` | fc759abe... | Source tarball MD5 checksum |
+| `SLURM_VERSION` | 26.05.5 | Slurm source version |
+| `SLURM_MD5SUM` | 3c96d51b... | Source tarball MD5 checksum |
 | `CUDA_VERSION` | 13-1 | NVIDIA NVML dev headers version |
 | `ROCM_VERSION` | 6.4.2 | AMD ROCm SMI version |
-| `PYXIS_VERSION` | 0.23.0 | NVIDIA Pyxis SPANK plugin version |
+| `PYXIS_VERSION` | 0.24.0 | NVIDIA Pyxis SPANK plugin version |
 | `UBUNTU_VERSION` | 24.04 | Ubuntu base image tag |
 | `ROCKY_VERSION` | 9.3 | Rocky Linux base image tag |
 | `PKG_RELEASE` | 1 | Package revision number (auto-incremented in CI) |
 
 ```bash
-make docker-build-ubuntu-amd64 SLURM_VERSION=25.11.4 SLURM_MD5SUM=fc759abe52f407520b348eac9b887c1c
+make docker-build-ubuntu-amd64 SLURM_VERSION=26.05.5 SLURM_MD5SUM=3c96d51b61c05d5df3b96d7da6aad04d
 make docker-build-ubuntu-amd64 CUDA_VERSION=13-1 ROCM_VERSION=6.4.2
-make docker-build-pyxis-ubuntu-amd64 PYXIS_VERSION=0.23.0
+make docker-build-pyxis-ubuntu-amd64 PYXIS_VERSION=0.24.0
 ```
 
 ### Output naming
@@ -54,10 +77,10 @@ make docker-build-pyxis-ubuntu-amd64 PYXIS_VERSION=0.23.0
 Tarballs include the Slurm version, distro, architecture, and GPU library versions:
 
 ```
-slurm-25.11.4-ubuntu2404-amd64-cuda13-1-rocm6.4.2.tar.gz
-slurm-25.11.4-ubuntu2404-arm64-cuda13-1.tar.gz
-slurm-25.11.4-rocky93-amd64-cuda13-1-rocm6.4.2.tar.gz
-pyxis-0.23.0-ubuntu2404-amd64-slurm25.11.4.tar.gz
+slurm-26.05.5-ubuntu2404-amd64-cuda13-1-rocm6.4.2.tar.gz
+slurm-26.05.5-ubuntu2404-arm64-cuda13-1.tar.gz
+slurm-26.05.5-rocky93-amd64-cuda13-1-rocm6.4.2.tar.gz
+pyxis-0.24.0-ubuntu2404-amd64-slurm26.05.5.tar.gz
 ```
 
 ### Prerequisites
@@ -87,4 +110,4 @@ The `release.yml` workflow is triggered manually via **workflow_dispatch** with 
 
 ### Release versioning
 
-Release tags follow semver: `v25.11.4-1`, `v25.11.4-2`, etc. The build number auto-increments and matches the package revision inside the .deb/.rpm files, so `v25.11.4-2` produces packages versioned `25.11.4-2` (deb) and `25.11.4-2.el9` (rpm).
+Release tags follow semver: `v26.05.5-1`, `v26.05.5-2`, etc. The build number auto-increments and matches the package revision inside the .deb/.rpm files, so `v26.05.5-2` produces packages versioned `26.05.5-2` (deb) and `26.05.5-2.el9` (rpm).

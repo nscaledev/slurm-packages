@@ -1,8 +1,8 @@
 ARG UBUNTU_VERSION=24.04
 FROM ubuntu:${UBUNTU_VERSION} AS build
 
-ARG SLURM_VERSION=25.11.4
-ARG SLURM_MD5SUM=fc759abe52f407520b348eac9b887c1c
+ARG SLURM_VERSION=26.05.5
+ARG SLURM_MD5SUM=3c96d51b61c05d5df3b96d7da6aad04d
 ARG TARGETARCH
 ARG UBUNTU_VERSION
 ARG CUDA_VERSION
@@ -60,6 +60,7 @@ RUN UBUNTU_SHORT=$(echo "${UBUNTU_VERSION}" | tr -d '.') && \
 
 WORKDIR /workspace
 COPY Makefile .
+COPY overlays/slurm/ubuntu/ overlays/slurm/ubuntu/
 
 ENV BUILD_DIR=/build
 RUN mkdir -p /build /output
